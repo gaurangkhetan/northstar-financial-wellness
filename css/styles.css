@@ -428,8 +428,11 @@ input.invalid, select.invalid { border-color: #dc2626; box-shadow: 0 0 0 4px #fe
 .dom-list { display: grid; gap: 14px; }
 
 /* ---------- Two-column report ---------- */
-.report-grid { display: grid; grid-template-columns: 340px 1fr; gap: 22px; align-items: start; }
-.report-left { position: sticky; top: 18px; display: grid; gap: 16px; }
+.report-grid { display: grid; grid-template-columns: 320px 1fr; gap: 36px; align-items: start; }
+/* No sticky/positioning here: a positioned left column paints ON TOP of the
+   static right column (incl. its drop-shadow), which looked like an overlap.
+   Static flow lets the right column paint over any left-column shadow bleed. */
+.report-left { display: grid; gap: 16px; }
 .report-right { display: grid; gap: 20px; }
 
 .top-action { background: linear-gradient(165deg, #1e3fb0, #2f5fff); color: #fff; border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow-lg); }
