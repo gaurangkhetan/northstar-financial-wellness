@@ -501,3 +501,17 @@ input.invalid, select.invalid { border-color: #dc2626; box-shadow: 0 0 0 4px #fe
   .quick-stats { grid-template-columns: 1fr; }
   .dash-head { align-items: flex-start; }
 }
+
+/* ============================================================
+   v3.1 — choice defaults + two-column overlap fix
+   ============================================================ */
+/* Prevent grid/flex children from overflowing and overlapping neighbours */
+.report-grid > * { min-width: 0; }
+.report-right, .report-left { min-width: 0; }
+.score-card { min-width: 0; }
+.score-right { min-width: 0; }
+.score-right h2 { overflow-wrap: anywhere; }
+
+/* "default" badge on the suggested choice */
+.chip-default { display: inline-block; align-self: flex-start; margin-top: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); background: #eef1f6; border-radius: 999px; padding: 2px 8px; }
+.chip.selected .chip-default { background: #fff; color: var(--brand-dark); }

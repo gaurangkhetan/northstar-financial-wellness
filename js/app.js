@@ -107,6 +107,14 @@
     tobacco: "", health: "", healthOptIn: "", heightFt: "", heightInch: "", weightLb: "", activity: "", conditions: [], familyHistory: "",
     name: "", email: "", creditConnected: false,
   };
+  // Sensible defaults for choice questions, assumed if the customer skips ahead.
+  // Gender is intentionally excluded — there's no reasonable default to assume.
+  const CHIP_DEFAULTS = {
+    maritalStatus: "single", employment: "w2", creditScore: "good", wantBuildCredit: "no",
+    retireLifestyle: "1", risk: "moderate", hasEstatePlan: "no", tobacco: "no", health: "good",
+    healthOptIn: "no", activity: "moderate", familyHistory: "no",
+  };
+
   let answers = Object.assign({}, DEFAULTS, { conditions: [] });
   let current = 0;
   let lastAnalysis = null;
@@ -119,11 +127,14 @@
   function renderIntro() {
     $("steps7").innerHTML = CFP_STEPS.map((s, i) => `<li class="step7"><span class="step7-n">${i + 1}</span><div><strong>${s[0]}</strong><span>${s[1]}</span></div></li>`).join("");
     $("evalGrid").innerHTML = EVAL_DOMAINS.map((d) => `<div class="eval-card"><span class="eval-ico">${d[0]}</span><strong>${d[1]}</strong><span>${d[2]}</span></div>`).join("");
+    // Remember previous answers so re-doing the questionnaire comes pre-filled.
+    const sa = loadJSON(K.answers);
+    if (sa) { answers = Object.assign({}, DEFAULTS, sa); if (!Array.isArray(answers.conditions)) answers.conditions = []; }
     const prof = loadJSON(K.profile);
     if (prof && (prof.name || prof.email)) {
       $("welcomeBack").classList.remove("hidden");
       $("welcomeBack").innerHTML = `👋 Welcome back${prof.name ? ", <strong>" + escapeHtml(prof.name) + "</strong>" : ""}. <a href="#" id="wbPortal">Open your portal</a> or start a fresh plan below.`;
-      answers.name = prof.name || ""; answers.email = prof.email || "";
+      answers.name = prof.name || answers.name || ""; answers.email = prof.email || answers.email || "";
       const wb = $("wbPortal"); if (wb) wb.addEventListener("click", (e) => { e.preventDefault(); openPortal(); });
     }
     const cr = loadJSON(K.credit); if (cr && cr.connected) { answers.creditConnected = true; answers.creditScore = cr.band; }
@@ -150,7 +161,12 @@
     } else if (f.type === "chips" || f.type === "checks") {
       const multi = f.type === "checks"; const cols = f.cols ? ` cols-${f.cols}` : "";
       const sel = (v) => multi ? (answers[f.key] || []).map(String).includes(String(v)) : String(answers[f.key]) === String(v);
-      const opts = f.options.map((o) => { const desc = o.desc ? `<span class="chip-desc">${o.desc}</span>` : ""; return `<label class="chip${sel(o.value) ? " selected" : ""}" data-key="${f.key}" data-value="${o.value}" data-multi="${multi}" data-exclusive="${!!o.exclusive}"><span class="chip-check${multi ? " sq" : ""}"></span><span class="chip-title">${o.title}</span>${desc}</label>`; }).join("");
+      const defVal = CHIP_DEFAULTS[f.key];
+      const opts = f.options.map((o) => {
+        const desc = o.desc ? `<span class="chip-desc">${o.desc}</span>` : "";
+        const dflt = defVal != null && String(defVal) === String(o.value) ? `<span class="chip-default">default</span>` : "";
+        return `<label class="chip${sel(o.value) ? " selected" : ""}" data-key="${f.key}" data-value="${o.value}" data-multi="${multi}" data-exclusive="${!!o.exclusive}"><span class="chip-check${multi ? " sq" : ""}"></span><span class="chip-title">${o.title}</span>${desc}${dflt}</label>`;
+      }).join("");
       control = `<div class="chips${cols}" data-group="${f.key}">${opts}</div>`;
     }
     return `<div class="field${f.half ? " half" : ""}" data-field="${f.key}"><label for="f_${f.key}">${f.label}${hint}</label>${control}<div class="field-error" id="e_${f.key}"></div></div>`;
@@ -212,7 +228,12 @@
         if (f.validateEmail && raw !== "" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(raw)) { showError(f.key, "Please enter a valid email."); ok = false; firstBad = firstBad || el; continue; }
         answers[f.key] = raw;
       } else if (f.type === "chips") {
-        if (answers[f.key] === "" || answers[f.key] == null) { showError(f.key, "Please choose an option."); ok = false; } else if (f.parse) answers[f.key] = f.parse(answers[f.key]);
+        if (answers[f.key] === "" || answers[f.key] == null) {
+          // Don't force a choice — assume the sensible default if one exists (gender has none).
+          const d = CHIP_DEFAULTS[f.key];
+          if (d != null) { answers[f.key] = f.parse ? f.parse(d) : d; continue; }
+          showError(f.key, "Please choose an option."); ok = false;
+        } else if (f.parse) answers[f.key] = f.parse(answers[f.key]);
       } else if (f.type === "checks") { if (f.required && (!answers[f.key] || answers[f.key].length === 0)) { showError(f.key, "Please select at least one."); ok = false; } }
     }
     if (!ok && firstBad) firstBad.focus();
