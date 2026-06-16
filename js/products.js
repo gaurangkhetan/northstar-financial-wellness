@@ -83,6 +83,45 @@ window.CATEGORIES = {
     ],
   },
 
+  // 6b) Final expense -------------------------------------------------
+  finalExpense: {
+    id: "finalExpense",
+    name: "Final Expense Insurance",
+    icon: "🕊️",
+    blurb: "A small, guaranteed whole-life policy so funeral costs and final bills are never a burden on the people you love.",
+    options: [
+      { name: "Ethos Final Expense", provider: "Ethos", partner: true, figure: "Simple issue", bullets: ["Whole life designed for ages 55–85", "Coverage never expires; premiums never rise", "Quick application built for seniors"] },
+      { name: "Mutual of Omaha Living Promise", provider: "Mutual of Omaha", figure: "Final expense", bullets: ["Coverage up to ~$40k", "Builds guaranteed cash value", "Trusted senior brand"] },
+      { name: "Aflac Final Expense", provider: "Aflac", figure: "Whole life", bullets: ["Level benefit options", "Fixed lifelong premiums", "Fast, simple underwriting"] },
+    ],
+  },
+
+  // 6c) Long-term care ------------------------------------------------
+  ltc: {
+    id: "ltc",
+    name: "Long-Term Care Protection",
+    icon: "🧓",
+    blurb: "Long-term care is one of retirement's biggest costs. Hybrid policies and riders cover care without the old 'use it or lose it' problem.",
+    options: [
+      { name: "Ethos IUL + LTC rider", provider: "Ethos", partner: true, figure: "Hybrid", bullets: ["Permanent coverage with a long-term-care rider", "Accelerate the death benefit to pay for care", "Cash value plus protection"] },
+      { name: "Nationwide CareMatters", provider: "Nationwide", figure: "Hybrid life/LTC", bullets: ["Tax-advantaged care benefits", "Any unused benefit passes to heirs", "Flexible care choices"] },
+      { name: "Mutual of Omaha LTC", provider: "Mutual of Omaha", figure: "Standalone LTC", bullets: ["Dedicated long-term-care coverage", "Inflation-protection options", "Covers home & facility care"] },
+    ],
+  },
+
+  // 6d) Mortgage protection (surfaced by credit events) ---------------
+  mortgageProtection: {
+    id: "mortgageProtection",
+    name: "Mortgage Protection",
+    icon: "🏠",
+    blurb: "Term coverage sized to your mortgage, so your family can keep the home even if your income suddenly stops.",
+    options: [
+      { name: "Ethos Mortgage Protection", provider: "Ethos", partner: true, figure: "No-exam term", bullets: ["Coverage matched to your loan balance", "100% online, no-exam options", "Living benefit riders included"] },
+      { name: "Banner Mortgage Term", provider: "Legal & General", figure: "Level term", bullets: ["Low rates for healthy applicants", "Terms that match your loan length", "Convertible later"] },
+      { name: "Protective Mortgage Term", provider: "Protective", figure: "Flexible term", bullets: ["Competitive pricing", "High coverage limits", "Strong financial ratings"] },
+    ],
+  },
+
   // 7) Education (529) ------------------------------------------------
   education: {
     id: "education",

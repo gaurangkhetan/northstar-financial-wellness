@@ -1,10 +1,12 @@
 /* ============================================================
-   RECOMMENDATION ENGINE (comprehensive)
-   Turns the questionnaire answers into:
-     • a financial-health score across CFP domains
-     • preparedness for life's unexpected scenarios
-     • an optional health / mortality-risk read
-     • a prioritized, category-by-category product plan
+   RECOMMENDATION ENGINE (comprehensive, v3)
+   • Softer, encouraging language about where someone stands
+   • Ethos protection products (Term, IUL, Final Expense, Annuity,
+     LTC, Mortgage Protection) always float to the top
+   • Segmentation: well-insured → longevity (annuity/LTC);
+     65+ lower-means/credit → final expense; 65+ higher-means →
+     lifetime income (annuity)
+   • A single "top step to protect your family" + top-3 movers
    All figures are illustrative estimates (disclaimed in the UI).
    ============================================================ */
 (function () {
@@ -25,7 +27,11 @@
     if (age < 60) return 5.5; if (age < 65) return 9.0; return 14.0;
   }
   const creditScoreVal = (band) => ({ excellent: 100, good: 80, fair: 55, poor: 30, building: 40, none: 40 }[band] ?? 60);
-  const gradeFor = (s) => (s >= 85 ? "A" : s >= 70 ? "B" : s >= 55 ? "C" : s >= 40 ? "D" : "F");
+  // softened, non-judgmental band names
+  const bandFor = (s) => (s >= 85 ? "Excellent" : s >= 70 ? "Strong" : s >= 55 ? "Solid foundation" : s >= 40 ? "Building momentum" : "Just getting started");
+
+  // Ethos protection categories — always prioritized to the top
+  const ETHOS_CATS = ["lifeInsurance", "finalExpense", "iul", "annuity", "ltc", "mortgageProtection"];
 
   function analyze(a) {
     const fmt = window.fmt;
@@ -47,6 +53,7 @@
     if (grossNeed - (a.savings || 0) > 25000 && recommendedCoverage < 100000) recommendedCoverage = 100000;
     const existingLife = a.existingLifeInsurance || 0;
     const coverageGap = Math.max(0, recommendedCoverage - existingLife);
+    const wellInsured = existingLife > 0 && (recommendedCoverage === 0 || existingLife >= recommendedCoverage);
 
     const genderMult = a.gender === "female" ? 0.85 : 1.0;
     const tobaccoMult = a.tobacco === "yes" ? 2.6 : 1.0;
@@ -80,224 +87,240 @@
     const hasSurplus = (a.monthlySavings || 0) > iraMonthly + 100;
 
     // ============================================================
-    //  FINANCIAL HEALTH SCORE (CFP domains)
+    //  FINANCIAL HEALTH SCORE (softened, encouraging notes)
     // ============================================================
     const domains = [];
     const ef = clamp(efMonths / efTargetMonths, 0, 1) * 100;
     domains.push({ name: "Emergency fund", score: ef, weight: 1.2,
-      note: efMonths >= efTargetMonths ? `${efMonths} months saved — solid cushion.` : `${efMonths} of ${efTargetMonths} target months saved.` });
+      note: efMonths >= efTargetMonths ? `Nicely done — ${efMonths} months set aside gives you a real cushion.` : `You've got ${efMonths} month${efMonths === 1 ? "" : "s"} saved; building toward ${efTargetMonths} adds peace of mind.` });
 
     const sr = clamp(savingsRate / 0.15, 0, 1) * 100;
     domains.push({ name: "Savings rate", score: sr, weight: 1.1,
-      note: `You're saving ~${Math.round(savingsRate * 100)}% of income (15%+ is strong).` });
+      note: `You're putting away ~${Math.round(savingsRate * 100)}% of income — every bit compounds, and 15% is a great goal to grow toward.` });
 
     const dtiNonMort = a.income > 0 ? (a.otherDebt || 0) / a.income : 0;
     const debtScore = clamp(1 - dtiNonMort / 0.4, 0, 1) * 100;
     domains.push({ name: "Debt load", score: debtScore, weight: 1.0,
-      note: (a.otherDebt || 0) === 0 ? "No non-mortgage debt — excellent." : `${fmt(a.otherDebt)} non-mortgage debt vs income.` });
+      note: (a.otherDebt || 0) === 0 ? "No non-mortgage debt — that's a wonderful position to be in." : `About ${fmt(a.otherDebt)} in non-mortgage debt to keep chipping away at.` });
 
     const protScore = recommendedCoverage > 0 ? clamp(existingLife / recommendedCoverage, 0, 1) * 100 : 100;
     domains.push({ name: "Protection", score: protScore, weight: 1.2,
-      note: recommendedCoverage > 0 ? (coverageGap > 0 ? `${fmt(coverageGap)} coverage gap vs your need.` : "Coverage need appears met.") : "No major coverage gap." });
+      note: recommendedCoverage > 0 ? (coverageGap > 0 ? `There's room to add about ${fmt(coverageGap)} of coverage so loved ones are fully protected.` : "Your loved ones look well-covered — great work.") : "No major coverage gap based on what you shared." });
 
     const retScore = clamp(readinessPct, 0, 100);
     domains.push({ name: "Retirement", score: retScore, weight: 1.3,
-      note: `Projected to reach ${Math.round(readinessPct)}% of your target nest egg.` });
+      note: `You're on your way — projected to reach about ${Math.round(readinessPct)}% of your retirement goal.` });
 
     const credScore = creditScoreVal(a.creditScore);
     domains.push({ name: "Credit", score: credScore, weight: 0.8,
-      note: `Credit profile: ${a.creditScore || "unknown"}.` });
+      note: `Credit profile: ${a.creditScore || "—"}${a.creditConnected ? " (connected)" : ""} — a strong lever for lower rates everywhere.` });
 
     const estScore = a.hasEstatePlan === "yes" ? 100 : (a.dependents > 0 || a.age >= 45 ? 25 : 55);
     domains.push({ name: "Estate plan", score: estScore, weight: 0.8,
-      note: a.hasEstatePlan === "yes" ? "Estate documents in place." : "No will/trust on record yet." });
+      note: a.hasEstatePlan === "yes" ? "Your documents are in place — a real gift to your family." : "Adding a simple will is a kind, easy gift to the people you love." });
 
     const totW = domains.reduce((s, d) => s + d.weight, 0);
     const total = Math.round(domains.reduce((s, d) => s + d.score * d.weight, 0) / totW);
-    domains.forEach((d) => { d.score = Math.round(d.score); d.status = d.score >= 75 ? "strong" : d.score >= 50 ? "ok" : "weak"; });
+    domains.forEach((d) => { d.score = Math.round(d.score); d.status = d.score >= 75 ? "strong" : d.score >= 50 ? "ok" : "focus"; });
 
     // ============================================================
-    //  PREPAREDNESS FOR LIFE'S UNEXPECTED SCENARIOS
+    //  PREPAREDNESS — gentle but honest (fear-of-the-unexpected)
     // ============================================================
     const scenarios = [];
-    const sStat = (ok, mid) => (ok ? "strong" : mid ? "moderate" : "risk");
-    // Premature death
+    const sStat = (ok, mid) => (ok ? "strong" : mid ? "moderate" : "focus");
     {
       const ratio = recommendedCoverage > 0 ? existingLife / recommendedCoverage : 1;
-      scenarios.push({ name: "Premature death of an earner", icon: "🕊️",
+      scenarios.push({ name: "If an earner passed away", icon: "🕊️",
         status: recommendedCoverage === 0 ? "strong" : sStat(ratio >= 1, ratio >= 0.5),
-        note: recommendedCoverage === 0 ? "Limited income-protection need based on your situation." :
-          coverageGap > 0 ? `You'd want about ${fmt(coverageGap)} more life coverage to fully protect your household.` : "Your life coverage appears sufficient." });
+        note: recommendedCoverage === 0 ? "Limited income-protection need based on what you shared." :
+          coverageGap > 0 ? `None of us can predict tomorrow. About ${fmt(coverageGap)} more coverage would keep your family's home and lifestyle intact.` : "Your family's income looks well-protected." });
     }
-    // Disability / serious illness
-    scenarios.push({ name: "Disability or serious illness", icon: "🩺",
+    scenarios.push({ name: "If you couldn't work (illness/injury)", icon: "🩺",
       status: sStat(efMonths >= 6, efMonths >= 3),
-      note: efMonths >= 3 ? "Your cash cushion helps; consider disability insurance to replace income longer-term." :
-        "A short cash cushion is risky if you couldn't work — build savings and consider disability cover." });
-    // Job loss
-    scenarios.push({ name: "Job loss / income interruption", icon: "💼",
+      note: efMonths >= 3 ? "Your cash cushion helps; disability coverage can extend that protection." : "A bigger cash cushion (and disability coverage) would soften the blow if you couldn't earn for a while." });
+    scenarios.push({ name: "If income paused (job change)", icon: "💼",
       status: sStat(efMonths >= efTargetMonths, efMonths >= 3),
-      note: `${efMonths} months of expenses saved vs a ${efTargetMonths}-month target.` });
-    // Market downturn
+      note: `${efMonths} month${efMonths === 1 ? "" : "s"} of expenses saved toward a ${efTargetMonths}-month comfort zone.` });
     {
       const nearRet = yearsToRetire <= 8;
-      const status = nearRet ? (a.risk === "aggressive" ? "risk" : a.risk === "moderate" ? "moderate" : "strong")
-        : (a.risk === "aggressive" ? "strong" : "strong");
-      scenarios.push({ name: "Market downturn", icon: "📉", status,
-        note: nearRet ? "You're close to retirement — shifting some assets to protected/guaranteed options reduces sequence-of-returns risk." :
-          "With time on your side, downturns are recoverable — stay invested and keep contributing." });
+      const status = nearRet ? (a.risk === "aggressive" ? "focus" : a.risk === "moderate" ? "moderate" : "strong") : "strong";
+      scenarios.push({ name: "If markets dropped", icon: "📉", status,
+        note: nearRet ? "Close to retirement, shifting a slice into protected/guaranteed options eases the risk of a bad-timing downturn." : "With time on your side, downturns are recoverable — staying invested wins." });
     }
-    // Outliving savings
     scenarios.push({ name: "Outliving your savings", icon: "⏳",
       status: sStat(readinessPct >= 100, readinessPct >= 60),
-      note: readinessPct >= 100 ? "On track for your target — guaranteed income can lock it in." :
-        `Projected to ${Math.round(readinessPct)}% of target — increase savings and consider lifetime-income products.` });
-    // Long-term care (age-relevant)
+      note: readinessPct >= 100 ? "On track for your goal — guaranteed income can lock it in for life." : `Projected to about ${Math.round(readinessPct)}% of goal — lifetime-income options help close the gap.` });
     if (a.age >= 45) {
-      scenarios.push({ name: "Long-term care needs", icon: "🧓",
-        status: a.savings >= 500000 ? "moderate" : "risk",
-        note: "LTC is a major late-life cost — explore LTC riders or hybrid life/LTC policies." });
+      scenarios.push({ name: "If you needed long-term care", icon: "🧓",
+        status: (a.savings || 0) >= 500000 ? "moderate" : "focus",
+        note: "Long-term care is a major late-life cost — a hybrid life/LTC policy or rider can cover it gracefully." });
     }
 
     // ============================================================
-    //  OPTIONAL HEALTH / MORTALITY-RISK READ
+    //  OPTIONAL HEALTH / LONGEVITY READ
     // ============================================================
     let healthRisk = null;
     if (a.healthOptIn && a.heightIn > 0 && a.weightLb > 0) {
       const bmi = (a.weightLb / (a.heightIn * a.heightIn)) * 703;
       const conditions = Array.isArray(a.conditions) ? a.conditions : [];
-      let pts = 0;
-      const factors = [];
-      if (a.age >= 60) { pts += 2; } else if (a.age >= 45) { pts += 1; }
+      let pts = 0; const factors = [];
+      if (a.age >= 60) pts += 2; else if (a.age >= 45) pts += 1;
       if (a.tobacco === "yes") { pts += 3; factors.push({ label: "Tobacco / nicotine use", impact: "high" }); }
       if (bmi >= 30) { pts += 2; factors.push({ label: `BMI ${bmi.toFixed(1)} (obese range)`, impact: "high" }); }
       else if (bmi >= 25) { pts += 1; factors.push({ label: `BMI ${bmi.toFixed(1)} (overweight)`, impact: "moderate" }); }
-      else if (bmi >= 18.5) { factors.push({ label: `BMI ${bmi.toFixed(1)} (healthy)`, impact: "good" }); }
+      else if (bmi >= 18.5) factors.push({ label: `BMI ${bmi.toFixed(1)} (healthy)`, impact: "good" });
       else { pts += 1; factors.push({ label: `BMI ${bmi.toFixed(1)} (underweight)`, impact: "moderate" }); }
-      const seriousConds = conditions.filter((c) => c !== "none");
-      pts += seriousConds.length * 2;
-      seriousConds.forEach((c) => factors.push({ label: `Condition: ${c}`, impact: "high" }));
+      const serious = conditions.filter((c) => c !== "none");
+      pts += serious.length * 2; serious.forEach((c) => factors.push({ label: `Condition: ${c}`, impact: "high" }));
       if (a.activity === "active") { pts -= 1; factors.push({ label: "Physically active", impact: "good" }); }
       else if (a.activity === "sedentary") { pts += 1; factors.push({ label: "Sedentary lifestyle", impact: "moderate" }); }
       if (a.familyHistory === "yes") { pts += 1; factors.push({ label: "Family history of chronic disease", impact: "moderate" }); }
-
       const band = pts <= 1 ? "Low" : pts <= 3 ? "Moderate" : pts <= 6 ? "Elevated" : "High";
-      const insuranceImpact = pts <= 1 ? "Likely best/preferred insurance rates."
-        : pts <= 3 ? "Standard-to-good rates likely."
-        : pts <= 6 ? "Higher premiums likely — improvements could lower them."
-        : "Significantly higher premiums likely — health improvements could meaningfully reduce cost.";
-      const suggestGlp1 = bmi >= 30 || (bmi >= 27 && seriousConds.length > 0);
-      healthRisk = { bmi: +bmi.toFixed(1), band, points: pts, factors, insuranceImpact, suggestGlp1, seriousConds };
+      const insuranceImpact = pts <= 1 ? "Likely best/preferred insurance rates." : pts <= 3 ? "Standard-to-good rates likely." : pts <= 6 ? "Improvements could meaningfully lower premiums." : "Health improvements could meaningfully reduce premiums.";
+      const suggestGlp1 = bmi >= 30 || (bmi >= 27 && serious.length > 0);
+      healthRisk = { bmi: +bmi.toFixed(1), band, points: pts, factors, insuranceImpact, suggestGlp1 };
     }
 
     // ============================================================
-    //  PRIORITIZED, CATEGORY-BY-CATEGORY PRODUCT PLAN
+    //  SEGMENTATION
+    // ============================================================
+    const senior = a.age >= 65;
+    const goodCredit = ["excellent", "good"].includes(a.creditScore);
+    const weakCredit = ["poor", "fair", "building", "none"].includes(a.creditScore);
+    const lowerMeans = a.income < 45000 || weakCredit;
+    const higherMeans = a.income >= 75000 || goodCredit;
+
+    let emphasis, emphasisLabel;
+    if (senior && lowerMeans) { emphasis = "finalExpense"; emphasisLabel = "Protect your family from final expenses"; }
+    else if (senior && higherMeans) { emphasis = "annuity"; emphasisLabel = "Turn savings into lifetime income"; }
+    else if (wellInsured) { emphasis = "annuity"; emphasisLabel = "Protect against outliving your money"; }
+    else if (coverageGap > 0) { emphasis = "lifeInsurance"; emphasisLabel = "Protect your family's income"; }
+    else if (highIncome && hasSurplus) { emphasis = "iul"; emphasisLabel = "Grow protected, tax-advantaged wealth"; }
+    else { emphasis = "lifeInsurance"; emphasisLabel = "Lock in protection while it's affordable"; }
+
+    // ============================================================
+    //  CATEGORY-BY-CATEGORY PLAN (Ethos protection floats to top)
     // ============================================================
     const plan = [];
     const add = (categoryId, priority, score, reason, figures) =>
       plan.push({ categoryId, priority, score, reason, figures: figures || [] });
 
-    // Emergency fund
-    if (efMonths < efTargetMonths) {
-      add("emergencyFund", "now", 100,
-        `Build toward ${efTargetMonths} months of expenses (about ${fmt(efTargetDollars)}). You're roughly ${fmt(efGapDollars)} short — park it in a high-yield account so it earns while staying liquid.`,
-        [{ label: "Target fund", value: fmt(efTargetDollars) }, { label: "Still to save", value: fmt(efGapDollars) }]);
-    } else {
-      add("emergencyFund", "maintain", 55,
-        `You already have ${efMonths} months saved — make sure it's in a high-yield account (not a 0.01% checking) so inflation doesn't erode it.`,
-        [{ label: "Your cushion", value: `${efMonths} months` }]);
+    // --- Ethos protection products (prioritized) ---
+    if (coverageGap > 0 && a.age < 70 && !(senior && lowerMeans)) {
+      add("lifeInsurance", "now", 100,
+        `Life rarely gives warning. For about ${fmt(monthlyTermPremium)}/mo, term life replaces your income and keeps your family in their home — the highest-impact way to protect them today. (Estimated ${fmt(coverageGap)} gap.)`,
+        [{ label: "Coverage to add", value: fmt(coverageGap) }, { label: "Est. premium", value: `${fmt(monthlyTermPremium)}/mo` }]);
     }
-
-    // Credit
-    if (["poor", "building", "none", "fair"].includes(a.creditScore) || a.wantBuildCredit === "yes") {
-      add("credit", "now", 92,
-        `Strengthening your credit lowers the rate you'll pay on mortgages, auto loans, and insurance. A secured or starter card with on-time payments is the fastest way to build history.`,
-        [{ label: "Current", value: a.creditScore || "—" }, { label: "Goal", value: "700+" }]);
-    } else {
-      add("credit", "optional", 45,
-        `Your credit looks healthy — focus a rewards card on spending you already do, and keep utilization low.`,
-        [{ label: "Current", value: a.creditScore || "good+" }]);
+    if (senior || lowerMeans || (a.age >= 55 && coverageGap === 0)) {
+      add("finalExpense", senior && lowerMeans ? "now" : "soon", senior && lowerMeans ? 99 : 70,
+        senior && lowerMeans
+          ? "A small whole-life policy means funeral costs and final bills never land on the people you love — guaranteed coverage, fixed premiums, designed for your age."
+          : "A modest final-expense policy ensures end-of-life costs are handled, sparing your family a stressful bill at a hard time.",
+        [{ label: "Typical benefit", value: "$10k–$40k" }, { label: "Premiums", value: "Locked for life" }]);
     }
-
-    // Life insurance
-    if (coverageGap > 0 && a.age < 70) {
-      add("lifeInsurance", "now", 96,
-        `You have an estimated ${fmt(coverageGap)} life-insurance gap. Level term is the cheapest way to close it — about ${fmt(monthlyTermPremium)}/mo at your age and health.`,
-        [{ label: "Coverage gap", value: fmt(coverageGap) }, { label: "Est. premium", value: `${fmt(monthlyTermPremium)}/mo` }]);
-    } else if (recommendedCoverage > 0 && existingLife >= recommendedCoverage) {
-      add("lifeInsurance", "maintain", 50,
-        `Your existing ${fmt(existingLife)} appears to cover your need — revisit it after major life changes (new child, home, income jump).`,
-        [{ label: "In force", value: fmt(existingLife) }]);
-    }
-
-    // IUL
-    if (highIncome && hasSurplus && a.age < 60) {
+    if (a.age < 60 && (highIncome ? hasSurplus : (a.dependents > 0 || a.maritalStatus === "married")) ) {
       const surplusMonthly = Math.max(0, Math.round((a.monthlySavings || 0) - iraMonthly));
-      add("iul", a.income >= 150000 ? "soon" : "later", a.income >= 150000 ? 78 : 62,
-        `With surplus cash flow beyond your IRA limit and ${yearsToRetire} years to grow, a max-funded IUL adds tax-deferred growth and potential tax-free income later — plus permanent coverage.`,
-        [{ label: "Possible funding", value: `${fmt(surplusMonthly)}/mo` }, { label: "Death benefit", value: "Up to $2M" }]);
-    } else if (a.age < 55 && (a.dependents > 0 || a.maritalStatus === "married") && a.risk !== "conservative") {
-      add("iul", "later", 48,
-        `If you want lifelong (not just term) protection plus index-linked growth with a 0% floor, an IUL can complement your term coverage for legacy goals.`,
-        [{ label: "Coverage", value: "Lifelong" }, { label: "Floor", value: "0%" }]);
+      add("iul", highIncome && hasSurplus ? "soon" : "later", highIncome && hasSurplus ? 85 : 60,
+        highIncome && hasSurplus
+          ? `With surplus beyond your IRA limit, a max-funded IUL adds permanent protection plus tax-advantaged growth you can tap later — market-linked upside with a 0% floor.`
+          : `An IUL gives lifelong protection plus index-linked growth with a 0% floor — a way to protect your family and build cash value at once.`,
+        highIncome && hasSurplus ? [{ label: "Possible funding", value: `${fmt(surplusMonthly)}/mo` }, { label: "Death benefit", value: "Up to $2M" }] : [{ label: "Coverage", value: "Lifelong" }, { label: "Floor", value: "0%" }]);
+    }
+    if (yearsToRetire <= 15 || a.risk === "conservative" || wellInsured || (senior && higherMeans)) {
+      const allocation = Math.round((projectedNestEgg * 0.25) / 5000) * 5000;
+      add("annuity", (senior && higherMeans) || wellInsured || yearsToRetire <= 8 ? "now" : "soon",
+        (senior && higherMeans) || wellInsured ? 96 : 72,
+        wellInsured ? "You've done the hard part on life insurance — now protect the income itself. An annuity turns part of your savings into a paycheck you can't outlive."
+          : (senior && higherMeans) ? "Convert part of your savings into guaranteed lifetime income, so a long life never means a tight one."
+          : "Converting a slice of savings into guaranteed lifetime income protects against market drops and the risk of outliving your money.",
+        [{ label: "Consider allocating", value: allocation > 0 ? `~${fmt(allocation)}` : "~25% of savings" }, { label: "Income", value: "Guaranteed for life" }]);
+    }
+    if (a.age >= 45 || wellInsured) {
+      add("ltc", wellInsured ? "soon" : "later", wellInsured ? 80 : 55,
+        wellInsured ? "With life coverage handled, long-term care is the next big 'what if.' A hybrid life/LTC policy covers care costs and still leaves a benefit for heirs."
+          : "Long-term care is one of retirement's biggest costs — a hybrid policy or rider covers it without the old 'use it or lose it' tradeoff.",
+        [{ label: "Covers", value: "Care costs" }, { label: "Structure", value: "Hybrid life/LTC" }]);
     }
 
-    // Retirement accounts
+    // --- Foundation & growth (non-Ethos) ---
+    if (efMonths < efTargetMonths) {
+      add("emergencyFund", "now", 90,
+        `Building toward ${efTargetMonths} months of expenses (about ${fmt(efTargetDollars)}) — you're roughly ${fmt(efGapDollars)} away. A high-yield account keeps it growing while staying instantly available.`,
+        [{ label: "Target fund", value: fmt(efTargetDollars) }, { label: "To go", value: fmt(efGapDollars) }]);
+    } else {
+      add("emergencyFund", "maintain", 50, `You've got a healthy ${efMonths}-month cushion — keep it in a high-yield account so inflation doesn't nibble at it.`, [{ label: "Your cushion", value: `${efMonths} months` }]);
+    }
+    if (weakCredit || a.wantBuildCredit === "yes") {
+      add("credit", "soon", 78, `Strengthening your credit gently lowers what you pay on mortgages, auto loans, and even insurance. On-time payments on the right card build history fast.`, [{ label: "Current", value: a.creditScore || "—" }, { label: "Goal", value: "700+" }]);
+    } else {
+      add("credit", "optional", 40, `Your credit looks healthy — a rewards card on everyday spending puts a little back in your pocket.`, [{ label: "Current", value: a.creditScore || "good+" }]);
+    }
     if ((a.monthlySavings || 0) > 0) {
       const iraSuggest = Math.min(iraMonthly, a.monthlySavings || 0);
-      add("retirement", "now", 95,
-        `Capture any employer 401(k) match first (free money), then fund an IRA — ${rothEligible ? "a Roth is ideal at your income for tax-free growth" : "you're above the direct Roth limit, so a Traditional IRA or backdoor Roth fits"}${isSelfEmployed ? "; as self-employed, a SEP/Solo 401(k) lets you shelter far more" : ""}.`,
-        [{ label: "Suggested", value: `${fmt(iraSuggest)}/mo` }, { label: "2026 limit", value: `${fmt(iraAnnualLimit)}/yr` }]);
+      add("retirement", "now", 88, `Grab any employer 401(k) match first (it's free money), then fund an IRA — ${rothEligible ? "a Roth is ideal at your income for tax-free growth" : "a Traditional IRA or backdoor Roth fits your income"}${isSelfEmployed ? "; as self-employed, a SEP/Solo 401(k) lets you save much more" : ""}.`, [{ label: "Suggested", value: `${fmt(iraSuggest)}/mo` }, { label: "2026 limit", value: `${fmt(iraAnnualLimit)}/yr` }]);
     }
-
-    // Education / 529
     if (a.dependents > 0) {
-      add("education", a.age < 50 ? "soon" : "later", 80,
-        `With ${a.dependents} dependent${a.dependents > 1 ? "s" : ""}, a 529 lets college savings grow tax-free — even ${fmt(150)}–${fmt(300)}/mo per child compounds meaningfully over the years before college.`,
-        [{ label: "Per child", value: "~$150–300/mo" }, { label: "Growth", value: "Tax-free for school" }]);
+      add("education", a.age < 50 ? "soon" : "later", 68, `With ${a.dependents} dependent${a.dependents > 1 ? "s" : ""}, a 529 grows tax-free for school — even $150–300/mo per child compounds beautifully over the years ahead.`, [{ label: "Per child", value: "~$150–300/mo" }, { label: "Growth", value: "Tax-free for school" }]);
     }
-
-    // Investing
     if ((a.monthlySavings || 0) > iraMonthly) {
-      add("investing", "soon", 70,
-        `Once your IRA is funded, route additional savings into a low-cost brokerage so your money keeps compounding for goals beyond retirement.`,
-        [{ label: "Risk profile", value: a.risk }, { label: "Assumed return", value: `~${Math.round(expReturn * 100)}%/yr` }]);
+      add("investing", "soon", 60, `Once your IRA is funded, a low-cost brokerage keeps additional savings compounding for goals beyond retirement.`, [{ label: "Risk profile", value: a.risk }, { label: "Assumed return", value: `~${Math.round(expReturn * 100)}%/yr` }]);
     } else {
-      add("investing", "later", 40,
-        `After your emergency fund and IRA are on track, a low-cost index portfolio is the simplest way to grow long-term wealth.`,
-        [{ label: "Start with", value: "Index funds" }]);
+      add("investing", "later", 35, `After your emergency fund and IRA, a simple index portfolio is the easiest way to grow long-term wealth.`, [{ label: "Start with", value: "Index funds" }]);
     }
-
-    // Annuity
-    if (yearsToRetire <= 12 || a.risk === "conservative") {
-      const allocation = Math.round((projectedNestEgg * 0.25) / 5000) * 5000;
-      add("annuity", yearsToRetire <= 8 ? "soon" : "later", yearsToRetire <= 8 ? 75 : 55,
-        `${yearsToRetire <= 12 ? `About ${yearsToRetire} years from retirement, ` : "Given your conservative profile, "}converting a slice of savings into guaranteed lifetime income protects against crashes and longevity.`,
-        [{ label: "Consider allocating", value: allocation > 0 ? `~${fmt(allocation)}` : "~25% of savings" }]);
-    }
-
-    // Estate
     if (a.hasEstatePlan !== "yes" && (a.dependents > 0 || a.age >= 40 || (a.savings || 0) > 250000)) {
-      add("estate", a.dependents > 0 ? "now" : "soon", a.dependents > 0 ? 85 : 65,
-        `${a.dependents > 0 ? "With kids, a will naming guardians is essential — " : ""}an estate plan keeps your wishes in control and spares your family probate. Often bundled affordably online.`,
-        [{ label: "You have", value: "No plan yet" }, { label: "Need", value: "Will + directives" }]);
+      add("estate", a.dependents > 0 ? "soon" : "later", a.dependents > 0 ? 66 : 48, `${a.dependents > 0 ? "With kids, a will naming guardians is especially meaningful — " : ""}an estate plan keeps your wishes in control and spares your family extra stress. Often bundled affordably online.`, [{ label: "You have", value: "No plan yet" }, { label: "Need", value: "Will + directives" }]);
     }
-
-    // Wellness (optional)
     if (a.healthOptIn && healthRisk && (healthRisk.points >= 3 || healthRisk.suggestGlp1)) {
-      add("wellness", "optional", 60,
-        `Your health inputs suggest room to lower long-term risk${healthRisk.suggestGlp1 ? " (a GLP-1 / weight program may be appropriate)" : ""}. Better health can also improve your insurance rate class over time.`,
-        [{ label: "Risk band", value: healthRisk.band }, { label: "BMI", value: String(healthRisk.bmi) }]);
+      add("wellness", "optional", 45, `Small health improvements${healthRisk.suggestGlp1 ? " (a clinician-guided GLP-1 / weight program may fit)" : ""} can add good years — and often improve your insurance rates over time.`, [{ label: "Risk band", value: healthRisk.band }, { label: "BMI", value: String(healthRisk.bmi) }]);
     }
 
-    // order: now > soon > maintain/later/optional, then by score
-    const rank = { now: 0, soon: 1, maintain: 2, later: 3, optional: 4 };
-    plan.sort((x, y) => (rank[x.priority] - rank[y.priority]) || (y.score - x.score));
+    // ---------- ORDER: Ethos-first, emphasis at very top ----------
+    const prRank = { now: 0, soon: 1, maintain: 2, later: 3, optional: 4 };
+    plan.forEach((p) => {
+      p.ethos = ETHOS_CATS.includes(p.categoryId);
+      p.isEmphasis = p.categoryId === emphasis;
+    });
+    plan.sort((x, y) =>
+      (y.isEmphasis - x.isEmphasis) ||      // emphasis first
+      (y.ethos - x.ethos) ||                // then Ethos products
+      (prRank[x.priority] - prRank[y.priority]) ||
+      (y.score - x.score));
+
+    // ---------- TOP ACTION + TOP 3 MOVERS ----------
+    const emphasisItem = plan.find((p) => p.categoryId === emphasis) || plan[0];
+    const topAction = emphasisItem ? {
+      categoryId: emphasisItem.categoryId, label: emphasisLabel,
+      reason: emphasisItem.reason, figures: emphasisItem.figures,
+    } : null;
+    // top 3 = the emphasis Ethos action + the next two highest-impact "now/soon" items
+    const movers = [];
+    if (emphasisItem) movers.push(emphasisItem);
+    plan.forEach((p) => {
+      if (movers.length >= 3) return;
+      if (p === emphasisItem) return;
+      if (p.priority === "now" || p.priority === "soon") movers.push(p);
+    });
+    let mi = 0;
+    while (movers.length < 3 && mi < plan.length) { if (!movers.includes(plan[mi])) movers.push(plan[mi]); mi++; }
+    const top3 = movers.slice(0, 3);
+
+    // ---------- WARM HEADLINE ----------
+    const strengths = domains.filter((d) => d.status === "strong").length;
+    const headline = total >= 70
+      ? "You've built a strong foundation — here are a few thoughtful ways to make it even more resilient."
+      : total >= 55
+      ? "You're in a solid spot with clear, encouraging next steps to protect what matters most."
+      : "You're taking a great first step today — here's a gentle, prioritized path forward.";
 
     return {
       inputs: a,
-      derived: { yearsToRetire, expReturnPct: Math.round(expReturn * 100), isSelfEmployed, savingsRate },
-      healthScore: { total, grade: gradeFor(total), domains },
+      derived: { yearsToRetire, expReturnPct: Math.round(expReturn * 100), isSelfEmployed, savingsRate, senior, wellInsured, lowerMeans, higherMeans },
+      headline,
+      scoreBand: bandFor(total),
+      segment: { emphasis, emphasisLabel, senior, wellInsured, lowerMeans, higherMeans },
+      topAction,
+      top3,
+      healthScore: { total, band: bandFor(total), domains, strengths },
       insurance: { recommendedCoverage, existingLife, coverageGap, monthlyTermPremium,
         breakdown: { debt, incomeReplacement, education, finalExpenses, grossNeed, liquidOffset: a.savings || 0 } },
       retirement: { yearsToRetire, targetAnnualIncome, estSocialSecurity, targetNestEgg, projectedNestEgg, gap, additionalMonthly, readinessPct, projectedAnnualIncome, expReturnPct: Math.round(expReturn * 100) },
