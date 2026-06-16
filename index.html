@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Northstar — Your complete financial wellness plan</title>
+  <meta name="description" content="A complete financial plan for every life stage. Answer a few questions and get a financial-health score, a preparedness check, and the right products — savings, credit, IRAs, 529s, insurance, IUL, annuities, investing, and estate planning." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#" id="brandHome">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span class="brand-name">Northstar</span>
+      </a>
+      <nav class="topnav">
+        <span class="topnav-tag"><strong>Ethos</strong> partner — exclusive member discounts</span>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap" id="app">
+    <!-- ============ INTRO ============ -->
+    <section class="view view-intro" id="view-intro">
+      <div class="hero">
+        <p class="eyebrow">Complete financial wellness · every life stage</p>
+        <h1 class="hero-title">One plan for your whole<br />financial life.</h1>
+        <p class="hero-sub">
+          We follow the same process a Certified Financial Planner™ uses — understand your situation,
+          set goals, analyze gaps, and recommend solutions. You'll get a financial-health score, a
+          stress-test against life's surprises, and 2–3 vetted options in every category: savings,
+          credit, retirement, college, insurance, annuities, investing, and estate planning.
+        </p>
+        <div class="hero-cta">
+          <button class="btn btn-primary btn-lg" id="startBtn">Start my plan →</button>
+          <span class="hero-time">⏱ About 4 minutes · Free · No account needed</span>
+        </div>
+        <div class="welcome-back hidden" id="welcomeBack"></div>
+      </div>
+
+      <!-- CFP 7-step process -->
+      <div class="intro-block">
+        <h2 class="intro-h2">How we build your plan</h2>
+        <p class="intro-p">Modeled on the CFP Board's 7-step financial planning process — the standard a fiduciary planner follows.</p>
+        <ol class="steps7" id="steps7"></ol>
+      </div>
+
+      <!-- What we evaluate -->
+      <div class="intro-block">
+        <h2 class="intro-h2">What we evaluate</h2>
+        <p class="intro-p">A few focused questions across the areas that determine your financial health and your readiness for the unexpected.</p>
+        <div class="eval-grid" id="evalGrid"></div>
+      </div>
+
+      <div class="hero-cta center">
+        <button class="btn btn-primary btn-lg" id="startBtn2">Build my plan →</button>
+      </div>
+    </section>
+
+    <!-- ============ QUESTIONNAIRE ============ -->
+    <section class="view view-quiz hidden" id="view-quiz">
+      <div class="progress">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-meta">
+          <span id="stepLabel">Step 1</span>
+          <span id="stepName">About you</span>
+        </div>
+      </div>
+
+      <form id="quizForm" class="card quiz-card" novalidate>
+        <div id="stepContainer"><!-- steps injected by app.js --></div>
+        <div class="quiz-nav">
+          <button type="button" class="btn btn-ghost" id="backBtn">← Back</button>
+          <button type="button" class="btn btn-primary" id="nextBtn">Continue →</button>
+        </div>
+      </form>
+      <p class="reassure">🔒 Everything stays in your browser. Nothing is sent to a server.</p>
+    </section>
+
+    <!-- ============ RESULTS ============ -->
+    <section class="view view-results hidden" id="view-results">
+      <div id="resultsContainer"><!-- results injected by app.js --></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p class="disclaimer">
+        <strong>Important:</strong> Northstar is an educational demonstration. Figures, premiums,
+        scores, health-risk reads, and projections are illustrative estimates — <strong>not quotes,
+        offers, or financial, tax, legal, or medical advice</strong>. Product names are examples for
+        illustration, not endorsements, and rates/availability vary by state, provider, age, and
+        health. Ethos products reflect publicly described offerings (including the Ethos &amp; North
+        American Accumulation IUL); "partner discount" is illustrative. Always consult licensed
+        professionals before acting.
+      </p>
+      <p class="copyright">© 2026 Northstar · Demo project</p>
+    </div>
+  </footer>
+
+  <script src="js/products.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
