@@ -195,7 +195,12 @@
     for (const f of step.fields) {
       if (f.type === "number") {
         const el = $(`f_${f.key}`), raw = el.value.trim();
-        if (raw === "") { showError(f.key, "This field is required."); ok = false; firstBad = firstBad || el; continue; }
+        if (raw === "") {
+          // Don't force input — if the customer skips, assume the shown default (placeholder).
+          const def = f.placeholder != null ? Number(String(f.placeholder).replace(/,/g, "")) : NaN;
+          if (isFinite(def)) { answers[f.key] = def; continue; }
+          showError(f.key, "This field is required."); ok = false; firstBad = firstBad || el; continue;
+        }
         const num = Number(raw);
         if (!isFinite(num)) { showError(f.key, "Please enter a number."); ok = false; firstBad = firstBad || el; continue; }
         if (f.min != null && num < f.min) { showError(f.key, `Must be at least ${f.min}.`); ok = false; firstBad = firstBad || el; continue; }
