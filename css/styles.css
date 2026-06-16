@@ -515,3 +515,15 @@ input.invalid, select.invalid { border-color: #dc2626; box-shadow: 0 0 0 4px #fe
 /* "default" badge on the suggested choice */
 .chip-default { display: inline-block; align-self: flex-start; margin-top: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); background: #eef1f6; border-radius: 999px; padding: 2px 8px; }
 .chip.selected .chip-default { background: #fff; color: var(--brand-dark); }
+
+/* ============================================================
+   v3.2 — definitive two-column overlap fix
+   .report-left/.report-right are themselves grids; an implicit
+   `auto` column lets non-wrapping children (e.g. a nowrap button)
+   blow the track wider than 340px and spill into the right column.
+   minmax(0,1fr) caps the inner column to the container width.
+   ============================================================ */
+.report-left, .report-right { grid-template-columns: minmax(0, 1fr); }
+.ai-list, .report-cta, .score-right { grid-template-columns: minmax(0, 1fr); }
+.btn-block { white-space: normal; }   /* let long full-width button labels wrap */
+.top-action, .ai-card, .report-cta { max-width: 100%; overflow-wrap: anywhere; }
